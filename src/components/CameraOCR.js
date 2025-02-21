@@ -8,13 +8,13 @@ const CameraOCR = ({ onScanComplete }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Function to open the camera
+  // Open camera
   const openCamera = async () => {
     setCameraOpen(true);
     try {
       const constraints = {
         video: {
-          facingMode: useBackCamera ? "environment" : "user", // Switch between front & back camera
+          facingMode: useBackCamera ? "environment" : "user",
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
@@ -28,30 +28,53 @@ const CameraOCR = ({ onScanComplete }) => {
     }
   };
 
-  // Function to take a picture
+  // Capture image
   const captureImage = () => {
     if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext("2d");
-      canvasRef.current.width = videoRef.current.videoWidth;
-      canvasRef.current.height = videoRef.current.videoHeight;
-      context.drawImage(videoRef.current, 0, 0);
-      processImage();
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext("2d");
+
+      // Set canvas size
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw full image
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Crop the center rectangular region (where license plate is)
+      const focusArea = {
+        x: canvas.width * 0.2, // 20% from left
+        y: canvas.height * 0.5 - 50, // Middle of screen
+        width: canvas.width * 0.6, // 60% of width
+        height: 100, // Fixed height for plates
+      };
+
+      // Create a new canvas to store cropped image
+      const croppedCanvas = document.createElement("canvas");
+      croppedCanvas.width = focusArea.width;
+      croppedCanvas.height = focusArea.height;
+      const croppedContext = croppedCanvas.getContext("2d");
+
+      // Copy only the selected region
+      croppedContext.drawImage(
+        canvas,
+        focusArea.x, focusArea.y, focusArea.width, focusArea.height, // Source
+        0, 0, focusArea.width, focusArea.height // Destination
+      );
+
+      processImage(croppedCanvas);
     }
   };
 
-  // Function to process image using OCR
-  const processImage = async () => {
-    const image = canvasRef.current.toDataURL("image/png");
+  // Process cropped image using OCR
+  const processImage = async (croppedCanvas) => {
+    const image = croppedCanvas.toDataURL("image/png");
     setScannedText("Scanning...");
-    
+
     try {
-      const { data: { text } } = await Tesseract.recognize(image, "eng+hin+mar");
+      const { data: { text } } = await Tesseract.recognize(image, "eng");
       let extractedText = text.replace(/\s/g, "").toUpperCase();
-
-      // Convert Hindi/Marathi numerals to English
-      const numberMap = { "०": "0", "१": "1", "२": "2", "३": "3", "४": "4", "५": "5", "६": "6", "७": "7", "८": "8", "९": "9" };
-      extractedText = extractedText.replace(/[०-९]/g, (m) => numberMap[m] || m);
-
       setScannedText(extractedText);
       if (onScanComplete) onScanComplete(extractedText);
     } catch (error) {
@@ -72,7 +95,25 @@ const CameraOCR = ({ onScanComplete }) => {
             </button>
             <button onClick={captureImage}>Capture & Scan</button>
           </div>
-          <video ref={videoRef} autoPlay playsInline style={{ width: "100%", maxWidth: "500px" }} />
+
+          <div style={{ position: "relative", width: "100%", maxWidth: "500px" }}>
+            <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }} />
+            
+            {/* Overlay rectangle for guidance */}
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "20%",
+                width: "60%",
+                height: "100px",
+                border: "2px solid red",
+                backgroundColor: "rgba(255, 0, 0, 0.2)",
+                transform: "translateY(-50%)",
+              }}
+            ></div>
+          </div>
+
           <canvas ref={canvasRef} style={{ display: "none" }} />
           <p>{scannedText && `Extracted Text: ${scannedText}`}</p>
         </>
