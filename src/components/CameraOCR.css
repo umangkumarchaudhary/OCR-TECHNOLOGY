@@ -1,0 +1,75 @@
+.camera-ocr {
+    text-align: center;
+    padding: 10px;
+  }
+  
+  .open-camera-btn {
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-top: 20px;
+  }
+  
+  .camera-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .video-wrapper {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+  }
+  
+  .video-feed {
+    width: 100%;
+    border-radius: 10px;
+  }
+  
+  .focus-box {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    width: 60%;
+    height: 20%;
+    border: 3px dashed red;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 0, 0, 0.1);
+  }
+  
+  .buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  
+  .switch-btn, .capture-btn {
+    padding: 10px 15px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  .switch-btn {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .capture-btn {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .scanned-text {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+  }
+  

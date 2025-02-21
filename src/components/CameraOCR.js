@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import Tesseract from "tesseract.js";
+import './CameraOCR.css';
 
 const CameraOCR = ({ onScanComplete }) => {
   const [cameraOpen, setCameraOpen] = useState(false);
