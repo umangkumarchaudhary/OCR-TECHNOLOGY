@@ -1,41 +1,51 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import Tesseract from "tesseract.js";
 
 const CameraOCR = ({ onScanComplete }) => {
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [useBackCamera, setUseBackCamera] = useState(true);
+  const [scannedText, setScannedText] = useState("");
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [scannedText, setScannedText] = useState("");
-  const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    startCamera();
-  }, []);
-
-  const startCamera = async () => {
+  // Function to open the camera
+  const openCamera = async () => {
+    setCameraOpen(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const constraints = {
+        video: {
+          facingMode: useBackCamera ? "environment" : "user", // Switch between front & back camera
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     } catch (error) {
-      console.error("Camera access denied:", error);
+      console.error("Error accessing camera:", error);
     }
   };
 
-  const captureAndScan = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  // Function to take a picture
+  const captureImage = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0);
+      processImage();
+    }
+  };
+
+  // Function to process image using OCR
+  const processImage = async () => {
+    const image = canvasRef.current.toDataURL("image/png");
+    setScannedText("Scanning...");
     
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-
-    // Capture the current frame
-    context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    const imageDataUrl = canvas.toDataURL("image/png");
-
-    setProcessing(true);
-
     try {
-      const { data: { text } } = await Tesseract.recognize(imageDataUrl, "eng+hin+mar");
+      const { data: { text } } = await Tesseract.recognize(image, "eng+hin+mar");
       let extractedText = text.replace(/\s/g, "").toUpperCase();
 
       // Convert Hindi/Marathi numerals to English
@@ -43,22 +53,30 @@ const CameraOCR = ({ onScanComplete }) => {
       extractedText = extractedText.replace(/[०-९]/g, (m) => numberMap[m] || m);
 
       setScannedText(extractedText);
-      onScanComplete(extractedText);
+      if (onScanComplete) onScanComplete(extractedText);
     } catch (error) {
       console.error("OCR Error:", error);
-    } finally {
-      setProcessing(false);
+      setScannedText("OCR Failed.");
     }
   };
 
   return (
     <div className="camera-ocr">
-      <video ref={videoRef} autoPlay playsInline width="300" height="200"></video>
-      <canvas ref={canvasRef} width="300" height="200" style={{ display: "none" }}></canvas>
-      <button onClick={captureAndScan} disabled={processing}>
-        {processing ? "Processing..." : "Capture & Scan"}
-      </button>
-      {scannedText && <p>Extracted Number: {scannedText}</p>}
+      {!cameraOpen ? (
+        <button onClick={openCamera}>Open Camera</button>
+      ) : (
+        <>
+          <div>
+            <button onClick={() => setUseBackCamera(!useBackCamera)}>
+              Switch to {useBackCamera ? "Front" : "Back"} Camera
+            </button>
+            <button onClick={captureImage}>Capture & Scan</button>
+          </div>
+          <video ref={videoRef} autoPlay playsInline style={{ width: "100%", maxWidth: "500px" }} />
+          <canvas ref={canvasRef} style={{ display: "none" }} />
+          <p>{scannedText && `Extracted Text: ${scannedText}`}</p>
+        </>
+      )}
     </div>
   );
 };
